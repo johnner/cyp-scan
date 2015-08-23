@@ -71,6 +71,7 @@ class CypSearch():
             if anchor and anchor['href']:
                 date = td.find('span').string
                 job = {
+                    'title': anchor.string,
                     'link': '%s%s' % (self.host, str(anchor['href'])),
                     'date': date,
                     'keywords': []
@@ -127,7 +128,7 @@ class CypSearch():
         for idx, job in enumerate(self.found_jobs, 2):
             ft = Font(color=colors.BLUE)
             jc = ws.cell(row=idx, column=1)
-            jc.value = job['link']
+            jc.value = job['title']
             jc.hyperlink = job['link']
             jc.font = ft
 
