@@ -26,7 +26,7 @@ def pagination(fn):
 class CypSearch():
 
     def __init__(self, offset=20, max_page=40,
-                 host=None, keywords=None, output='jobs.xlsx'):
+                 host=None, keywords=None, output=None):
         if keywords:
             self.keywords = keywords
         else:
@@ -39,7 +39,10 @@ class CypSearch():
         self.offset = offset
         self.max_page = max_page
         self.found_jobs = []
-        self.output = output
+        if not output:
+            raise ValueError('output file must be defined')
+        else:
+            self.output = output
 
     def start(self):
         lst = []
@@ -89,7 +92,7 @@ class CypSearch():
         html = yield getPage(url)
         jobs = self.extract_job_links(html)
         for idx, job in enumerate(jobs, 1):
-            logging.info('fetching %s job details...' % idx)
+            logging.info('fetching job details...')
             jhtml = yield getPage(job)
             self.scan_keyword(jhtml, job, url)
         defer.returnValue(jobs)
@@ -110,14 +113,17 @@ class CypSearch():
         for idx, job in enumerate(self.found_jobs, 1):
             jc = ws.cell(row=idx, column=1)
             jc.value = job[0]
+        logging.info('saving to file %s' % self.output)
         wb.save(self.output)
 
 
-def main(keywords, output):
+def main(keywords, output, paging=10, max_page=10):
+    if not output:
+        output = 'jobs.xlsx'
     search = CypSearch(host='http://www.cyprusjobs.com/',
                        keywords=keywords,
                        output=output,
-                       offset=5, max_page=0)
+                       offset=paging, max_page=max_page)
     search.start()
     reactor.run()
 
@@ -125,9 +131,12 @@ def main(keywords, output):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Crawl for cyprus jobs '
                                                  'example: python cyp.py python javascript '
-                                                 'define output file: python cyp.py python javascript -o result.xls')
+                                                 'define output file: python cyp.py python javascript -o result.xls '
+                                                 'to define paging: python cyp.py python -p 10 -m 50')
     parser.add_argument('keyword', nargs='+', help='one or more keywords to search')
     parser.add_argument('-o', type=str, dest='output', help='output result file name')
+    parser.add_argument('-p', type=int, dest='paging', help='how many urls to get on page')
+    parser.add_argument('-m', type=int, dest='maxpage', help='maximum jobs to scan')
     args = parser.parse_args()
 
-    main(args.keyword, args.output)
+    main(args.keyword, args.output, args.paging, args.maxpage)
