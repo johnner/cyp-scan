@@ -64,15 +64,21 @@ class CypSearch():
         """ get job links on the page """
         soup = BeautifulSoup(html)
         soup.prettify()
-        links = []
+        jobs = []
         tds = soup.findAll('td', {'class': 'itd_lb'})
         for td in tds:
             anchor = td.find('a')
             if anchor and anchor['href']:
-                links.append('%s%s' % (self.host, str(anchor['href'])))
-        return links
+                date = td.find('span').string
+                job = {
+                    'link': '%s%s' % (self.host, str(anchor['href'])),
+                    'date': date,
+                    'keywords': []
+                }
+                jobs.append(job)
+        return jobs
 
-    def scan_keyword(self, html, link, page):
+    def scan_keyword(self, html, job, page):
         """ scan job details for keywords"""
         soup = BeautifulSoup(html)
         soup.prettify()
@@ -84,14 +90,11 @@ class CypSearch():
             td = t.findAll('td', text=re.compile(word, re.IGNORECASE))
             if td:
                 found = True
-                words_found.append(word)
+                job['keywords'].append(word)
         if found:
-            logging.info('Keyword found! Link: %s, Page: %s' % (link, page))
-            self.found_jobs.append({
-                'link': link,
-                'page': page,
-                'keywords': words_found
-            })
+            logging.info('Keyword found! Link: %s, Page: %s' % (job['link'], page))
+            job['page'] = page
+            self.found_jobs.append(job)
 
 
     @defer.inlineCallbacks
@@ -100,7 +103,7 @@ class CypSearch():
         jobs = self.extract_job_links(html)
         for idx, job in enumerate(jobs, 1):
             logging.info('fetching job details...')
-            jhtml = yield getPage(job)
+            jhtml = yield getPage(job['link'])
             self.scan_keyword(jhtml, job, url)
         defer.returnValue(jobs)
 
@@ -127,8 +130,13 @@ class CypSearch():
             jc.value = job['link']
             jc.hyperlink = job['link']
             jc.font = ft
+
             kw = ws.cell(row=idx, column=2)
             kw.value = ', '.join(job['keywords'])
+
+            dt = ws.cell(row=idx, column=3)
+            dt.value = job['date']
+
         logging.info('saving to file %s' % self.output)
         wb.save(self.output)
 
