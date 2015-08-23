@@ -6,6 +6,7 @@ from twisted.internet import reactor, defer
 from twisted.web.client import getPage
 from BeautifulSoup import BeautifulSoup
 from openpyxl import Workbook
+from openpyxl.styles import Font, colors
 import re
 import argparse
 import logging
@@ -76,15 +77,21 @@ class CypSearch():
         soup = BeautifulSoup(html)
         soup.prettify()
         found = False
+        words_found = []
         table = soup.find('table', {'class': 'FeturedAdTd'}, )
         t = table.find('table')
         for word in self.keywords:
             td = t.findAll('td', text=re.compile(word, re.IGNORECASE))
             if td:
                 found = True
+                words_found.append(word)
         if found:
             logging.info('Keyword found! Link: %s, Page: %s' % (link, page))
-            self.found_jobs.append((link, page))
+            self.found_jobs.append({
+                'link': link,
+                'page': page,
+                'keywords': words_found
+            })
 
 
     @defer.inlineCallbacks
@@ -109,9 +116,19 @@ class CypSearch():
         """ save found jobs to file to excel file """
         wb = Workbook()
         ws = wb.active
-        for idx, job in enumerate(self.found_jobs, 1):
+        t_url = ws.cell(row=1, column=1)
+        t_url.value = 'Link'
+        t_key = ws.cell(row=1, column=2)
+        t_key.value = 'Keyword'
+
+        for idx, job in enumerate(self.found_jobs, 2):
+            ft = Font(color=colors.BLUE)
             jc = ws.cell(row=idx, column=1)
-            jc.value = job[0]
+            jc.value = job['link']
+            jc.hyperlink = job['link']
+            jc.font = ft
+            kw = ws.cell(row=idx, column=2)
+            kw.value = ', '.join(job['keywords'])
         logging.info('saving to file %s' % self.output)
         wb.save(self.output)
 
