@@ -1,4 +1,4 @@
-# !/Users/anthony/Development/vk_parsed/env/bin/python
+# !/usr/bin/env python
 # coding: utf-8
 
 from __future__ import print_function
