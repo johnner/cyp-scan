@@ -98,7 +98,6 @@ class CypSearch():
         defer.returnValue(jobs)
 
     def finish(self, res):
-        logging.info('======== finish =========')
         reactor.stop()
         if not self.found_jobs:
             logging.info('Unfortunately there is no job with keywords: {}'.format(self.keywords))
@@ -123,7 +122,8 @@ def main(keywords, output, paging=10, max_page=10):
     search = CypSearch(host='http://www.cyprusjobs.com/',
                        keywords=keywords,
                        output=output,
-                       offset=paging, max_page=max_page)
+                       offset=paging,
+                       max_page=max_page)
     search.start()
     reactor.run()
 
