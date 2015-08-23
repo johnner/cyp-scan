@@ -1,11 +1,11 @@
 # !/usr/bin/env python
 # coding: utf-8
 
-from __future__ import print_function
 import functools
 from twisted.internet import reactor, defer
 from twisted.web.client import getPage
 from BeautifulSoup import BeautifulSoup
+from openpyxl import Workbook
 import re
 import argparse
 import logging
@@ -25,7 +25,8 @@ def pagination(fn):
 
 class CypSearch():
 
-    def __init__(self, offset=20, max_page=40, host=None, keywords=None):
+    def __init__(self, offset=20, max_page=40,
+                 host=None, keywords=None, output='jobs.xlsx'):
         if keywords:
             self.keywords = keywords
         else:
@@ -38,6 +39,7 @@ class CypSearch():
         self.offset = offset
         self.max_page = max_page
         self.found_jobs = []
+        self.output = output
 
     def start(self):
         lst = []
@@ -66,7 +68,6 @@ class CypSearch():
                 links.append('%s%s' % (self.host, str(anchor['href'])))
         return links
 
-
     def scan_keyword(self, html, link, page):
         """ scan job details for keywords"""
         soup = BeautifulSoup(html)
@@ -79,7 +80,7 @@ class CypSearch():
             if td:
                 found = True
         if found:
-            print ('Keyword found! Link: %s, Page: %s' % (link, page))
+            logging.info('Keyword found! Link: %s, Page: %s' % (link, page))
             self.found_jobs.append((link, page))
 
 
@@ -87,23 +88,38 @@ class CypSearch():
     def fetch_page(self, url):
         html = yield getPage(url)
         jobs = self.extract_job_links(html)
-        for job in jobs:
-            print('========== fetch job details ==========')
+        for idx, job in enumerate(jobs, 1):
+            logging.info('fetching %s job details...' % idx)
             jhtml = yield getPage(job)
             self.scan_keyword(jhtml, job, url)
         defer.returnValue(jobs)
 
-
     def finish(self, res):
-        print('======== finish =========')
+        logging.info('======== finish =========')
         reactor.stop()
-        print(self.found_jobs)
+        if not self.found_jobs:
+            logging.info('Unfortunately there is no job with keywords: {}'.format(self.keywords))
+        else:
+            self.save_jobs()
+            logging.info('Found {} jobs. Saved to file'.format(len(self.found_jobs)))
+
+    def save_jobs(self):
+        """ save found jobs to file to excel file """
+        wb = Workbook()
+        ws = wb.active
+        for idx, job in enumerate(self.found_jobs, 1):
+            jc = ws.cell(row=idx, column=1)
+            jc.value = job[0]
+            c = ws.cell(row=idx, column=2)
+            c.value = job[1]
+        wb.save(self.output)
 
 
 def main(keywords, output):
     search = CypSearch(host='http://www.cyprusjobs.com/',
                        keywords=keywords,
-                       offset=20, max_page=20)
+                       output=output,
+                       offset=5, max_page=0)
     search.start()
     reactor.run()
 
@@ -115,7 +131,5 @@ if __name__ == "__main__":
     parser.add_argument('keyword', nargs='+', help='one or more keywords to search')
     parser.add_argument('-o', type=str, dest='output', help='output result file name')
     args = parser.parse_args()
-    logging.info(args.keyword)
-    logging.info(args.output)
 
     main(args.keyword, args.output)
