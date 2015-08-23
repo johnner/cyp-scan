@@ -101,7 +101,7 @@ class CypSearch():
             logging.info('Unfortunately there is no job with keywords: {}'.format(self.keywords))
         else:
             self.save_jobs()
-            logging.info('Found {} jobs. Saved to file'.format(len(self.found_jobs)))
+            logging.info('Found jobs: {}. Saved to file {}'.format(len(self.found_jobs), self.output))
 
     def save_jobs(self):
         """ save found jobs to file to excel file """
@@ -110,8 +110,6 @@ class CypSearch():
         for idx, job in enumerate(self.found_jobs, 1):
             jc = ws.cell(row=idx, column=1)
             jc.value = job[0]
-            c = ws.cell(row=idx, column=2)
-            c.value = job[1]
         wb.save(self.output)
 
 

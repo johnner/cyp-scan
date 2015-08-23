@@ -2,3 +2,5 @@
 *.pyc
 env
 jobs.xlsx
+.DS_Store
+~$jobs.xlsx
