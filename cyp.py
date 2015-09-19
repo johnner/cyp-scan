@@ -4,13 +4,13 @@
 import functools
 from twisted.internet import reactor, defer
 from twisted.web.client import getPage
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 from openpyxl import Workbook
 from openpyxl.styles import Font, colors
 import re
 import argparse
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 
 def pagination(fn):
@@ -62,7 +62,7 @@ class CypSearch():
 
     def extract_job_links(self, html):
         """ get job links on the page """
-        soup = BeautifulSoup(html)
+        soup = BeautifulSoup(html, "html.parser")
         soup.prettify()
         jobs = []
         tds = soup.findAll('td', {'class': 'itd_lb'})
@@ -81,7 +81,7 @@ class CypSearch():
 
     def scan_keyword(self, html, job, page):
         """ scan job details for keywords"""
-        soup = BeautifulSoup(html)
+        soup = BeautifulSoup(html, "html.parser")
         soup.prettify()
         found = False
         words_found = []
@@ -100,11 +100,11 @@ class CypSearch():
 
     @defer.inlineCallbacks
     def fetch_page(self, url):
-        html = yield getPage(url)
+        html = yield getPage(url.encode('utf8'))
         jobs = self.extract_job_links(html)
         for idx, job in enumerate(jobs, 1):
             logging.info('fetching job details...')
-            jhtml = yield getPage(job['link'])
+            jhtml = yield getPage(job['link'].encode('utf8'))
             self.scan_keyword(jhtml, job, url)
         defer.returnValue(jobs)
 
@@ -161,8 +161,8 @@ if __name__ == "__main__":
                                                  'to define paging: python cyp.py python -p 10 -m 50')
     parser.add_argument('keyword', nargs='+', help='one or more keywords to search')
     parser.add_argument('-o', type=str, dest='output', help='output result file name')
-    parser.add_argument('-p', type=int, dest='paging', help='how many urls to get on page')
-    parser.add_argument('-m', type=int, dest='maxpage', help='maximum jobs to scan')
+    # parser.add_argument('-p', type=int, dest='paging', help='how many urls to get on page')
+    # parser.add_argument('-m', type=int, dest='maxpage', help='maximum jobs to scan')
     args = parser.parse_args()
 
-    main(args.keyword, args.output, args.paging, args.maxpage)
+    main(args.keyword, args.output)
